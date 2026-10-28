@@ -136,6 +136,26 @@ defmodule Xav.EncoderTest do
       assert high > low * 2
     end
 
+    test "keyframe: true makes an intra frame on the same encoder", %{frame: frame} do
+      encoder =
+        Xav.Encoder.new(:vp8,
+          width: 360,
+          height: 240,
+          format: :yuv420p,
+          time_base: {1, 25},
+          gop_size: 3000,
+          codec_options: [{"deadline", "realtime"}, {"lag-in-frames", "0"}]
+        )
+
+      keyframes =
+        for pts <- 0..9 do
+          [packet] = Xav.Encoder.encode(encoder, %{frame | pts: pts}, keyframe: pts == 5)
+          packet.keyframe?
+        end
+
+      assert keyframes == [true, false, false, false, false, true, false, false, false, false]
+    end
+
     test "an option the codec does not know fails encoder creation" do
       assert_raise ErlangError, ~r/unknown_codec_option/, fn ->
         Xav.Encoder.new(:vp8,
